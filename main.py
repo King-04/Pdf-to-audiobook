@@ -1,8 +1,7 @@
 import tkinter as tk
-from google.cloud import texttospeech
-
-# Set your Google Cloud Platform credentials file path
-# os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'path/to/your/credentials.json'
+from tkinter import filedialog
+import pdfplumber
+import pyttsx3
 
 class PDFToAudioConverter:
     def __init__(self, master):
@@ -18,8 +17,16 @@ class PDFToAudioConverter:
         self.file_entry = tk.Entry(master, width=50)
         self.file_entry.pack()
 
+        self.browse_button = tk.Button(master, text="Browse", command=self.browse_pdf)
+        self.browse_button.pack(pady=5)
+
         self.convert_button = tk.Button(master, text="Convert", command=self.convert_pdf_to_audio)
         self.convert_button.pack(pady=10)
+
+    def browse_pdf(self):
+        file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
+        self.file_entry.delete(0, tk.END)
+        self.file_entry.insert(tk.END, file_path)
 
     def convert_pdf_to_audio(self):
         pdf_file_path = self.file_entry.get()
@@ -29,38 +36,20 @@ class PDFToAudioConverter:
             return
 
         try:
-            # Extract text from PDF (You can use PyPDF2 or pdfplumber here)
-            # Replace the following line with your PDF text extraction logic
-            pdf_text = "Sample text extracted from PDF."
+            # Extract text from PDF using pdfplumber
+            pdf_text = ""
+            with pdfplumber.open(pdf_file_path) as pdf:
+                for page in pdf.pages:
+                    pdf_text += page.extract_text()
 
-            # Initialize Text-to-Speech client
-            client = texttospeech.TextToSpeechClient()
-
-            # Set the text input to be synthesized
-            synthesis_input = texttospeech.SynthesisInput(text=pdf_text)
-
-            # Select the voice type
-            voice = texttospeech.VoiceSelectionParams(
-                language_code="en-US",
-                name="en-US-Wavenet-D",
-            )
-
-            # Select the audio file type
-            audio_config = texttospeech.AudioConfig(
-                audio_encoding=texttospeech.AudioEncoding.LINEAR16
-            )
+            # Initialize pyttsx3 engine
+            engine = pyttsx3.init()
 
             # Perform the text-to-speech conversion
-            response = client.synthesize_speech(
-                input=synthesis_input, voice=voice, audio_config=audio_config
-            )
+            engine.save_to_file(pdf_text, "./output.mp3")  # Change the file extension as needed
+            engine.runAndWait()
 
-            # Save the audio file
-            audio_file_path = "output.wav"  # Change this path as needed
-            with open(audio_file_path, "wb") as out_file:
-                out_file.write(response.audio_content)
-
-            tk.messagebox.showinfo("Conversion Complete", f"Audiobook saved at {audio_file_path}")
+            tk.messagebox.showinfo("Conversion Complete", "Audiobook saved at output.mp3")
 
         except Exception as e:
             tk.messagebox.showerror("Error", f"An error occurred: {str(e)}")
